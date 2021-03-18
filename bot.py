@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+from jinja2 import Environment, FileSystemLoader
 import pandas as pd
 import os
 import twitter
@@ -10,14 +11,11 @@ api = twitter.Api(consumer_key=os.environ["consumer_key"],
                   access_token_key=os.environ["access_token_key"],
                   access_token_secret=os.environ["access_token_secret"])
 
-selected = pd.read_csv("database.csv").sample()
+template = Environment(loader=FileSystemLoader(".")).get_template("template.j2")
 
-if selected["path"].isna():
-    status = "キー\t：{}\n動作\t：{}\nシーン\t：{}\n\n{}".format(*selected)
-    # api.PostUpdate(status)
-else:
-    status = "キー\t：{}\n動作\t：{}\nシーン\t：{}\n\n{}".format(*selected[:-1])
-    media_path = "screenrecord/" + str(selected[-1]) + ".gif"
-    # api.PostUpdate(status, media=media_path)
+data, *_ = pd.read_csv("database.csv").sample().T.to_dict().values()
 
-print(status)
+api.PostUpdate(
+    template.render(**data),
+    media=f"screenrecord/{path}.gif" if (path := data.get("path")) else None,
+)
